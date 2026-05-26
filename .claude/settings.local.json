@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "WebFetch(domain:www.beetledev.kr)",
+      "Bash(curl -v -I --max-time 15 \"https://www.beetledev.kr/\")",
+      "Bash(curl -sv \"https://www.beetledev.kr/\")"
     ]
   }
 }
