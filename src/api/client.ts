@@ -1,17 +1,19 @@
 import axios from 'axios';
 
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL;
+
 export const authClient = axios.create({
-  baseURL: import.meta.env.VITE_AUTH_API_URL ?? '/auth-api',
+  baseURL: GATEWAY_URL ?? '/auth-api',
   withCredentials: true,
 });
 
 export const storeClient = axios.create({
-  baseURL: import.meta.env.VITE_STORE_API_URL ?? '/store-api',
+  baseURL: GATEWAY_URL ?? '/store-api',
   withCredentials: true,
 });
 
 export const notiClient = axios.create({
-  baseURL: import.meta.env.VITE_NOTI_API_URL ?? '/noti-api',
+  baseURL: GATEWAY_URL ?? '/noti-api',
   withCredentials: true,
 });
 
