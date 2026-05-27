@@ -1,12 +1,17 @@
 import axios from 'axios';
 
 export const authClient = axios.create({
-  baseURL: '/auth-api',
+  baseURL: import.meta.env.VITE_AUTH_API_URL ?? '/auth-api',
   withCredentials: true,
 });
 
 export const storeClient = axios.create({
-  baseURL: '/store-api',
+  baseURL: import.meta.env.VITE_STORE_API_URL ?? '/store-api',
+  withCredentials: true,
+});
+
+export const notiClient = axios.create({
+  baseURL: import.meta.env.VITE_NOTI_API_URL ?? '/noti-api',
   withCredentials: true,
 });
 
@@ -36,3 +41,4 @@ const setAuthInterceptor = (client: typeof authClient) => {
 
 setAuthInterceptor(authClient);
 setAuthInterceptor(storeClient);
+setAuthInterceptor(notiClient);
