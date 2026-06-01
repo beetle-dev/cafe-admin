@@ -188,7 +188,7 @@ export function DashboardPage() {
 
         <div className="bg-white rounded-2xl p-5 shadow-sm">
           <h3 className="font-semibold text-gray-900 mb-4">결제 수단별 (오늘)</h3>
-          {paymentData && (todaySales?.cardSales || todaySales?.cashSales) ? (
+          {paymentData ? (
             <div>
               <Doughnut data={paymentData} options={{ responsive: true, plugins: { legend: { position: 'bottom' } }, cutout: '65%' }} />
             </div>
