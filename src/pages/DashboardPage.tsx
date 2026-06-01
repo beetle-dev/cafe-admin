@@ -6,11 +6,10 @@ import {
 } from 'chart.js';
 import { Bar, Line, Doughnut } from 'react-chartjs-2';
 import { ShoppingCart, TrendingUp, Package, Bell, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { getDailySales, getHourlySales } from '../api/sales';
 import { getOrders } from '../api/order';
 import { getInventory } from '../api/inventory';
 import { useAuthStore } from '../store/authStore';
-import type { SalesStatsDailyResDto, SalesStatsHourlyResDto, OrderResDto, StoreInventoryResDto } from '../types';
+import type { OrderResDto, StoreInventoryResDto } from '../types';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend, Filler);
 
@@ -47,42 +46,60 @@ function KpiCard({
 
 export function DashboardPage() {
   const { selectedStoreId } = useAuthStore();
-  const [dailySales, setDailySales] = useState<SalesStatsDailyResDto[]>([]);
-  const [hourlySales, setHourlySales] = useState<SalesStatsHourlyResDto[]>([]);
+  const [monthOrders, setMonthOrders] = useState<OrderResDto[]>([]);
   const [recentOrders, setRecentOrders] = useState<OrderResDto[]>([]);
   const [inventory, setInventory] = useState<StoreInventoryResDto[]>([]);
 
   useEffect(() => {
     if (!selectedStoreId) return;
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-    const from = fmt(new Date(now.getFullYear(), now.getMonth(), 1));
-    const to = fmt(now);
-    const todayFrom = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
-
-    getDailySales(selectedStoreId, { from, to, size: 30 })
-      .then((r) => r.data && setDailySales(r.data.content)).catch(() => {});
-    getHourlySales(selectedStoreId, { from: todayFrom, to, size: 24 })
-      .then((r) => r.data && setHourlySales(r.data.content)).catch(() => {});
+    getOrders(selectedStoreId, { size: 2000, sort: 'createdAt', direction: 'DESC' })
+      .then((r) => r.data && setMonthOrders(r.data.content)).catch(() => {});
     getOrders(selectedStoreId, { size: 5, sort: 'createdAt', direction: 'DESC' })
       .then((r) => r.data && setRecentOrders(r.data.content)).catch(() => {});
     getInventory(selectedStoreId, { size: 100 })
       .then((r) => r.data && setInventory(r.data.content)).catch(() => {});
   }, [selectedStoreId]);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const todaySales = dailySales.find((d) => d.statDate === today);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const monthStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+
+  const completedOrders = monthOrders.filter((o) => o.status === 'COMPLETED');
+  const thisMonthOrders = completedOrders.filter((o) => o.createdAt?.startsWith(monthStr));
+  const todayOrders = completedOrders.filter((o) => o.createdAt?.startsWith(todayStr));
+
+  const totalMonthlySales = thisMonthOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const totalOrders = thisMonthOrders.length;
+  const todayTotalSales = todayOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const lowStockCount = inventory.filter((i) => i.isLow).length;
-  const totalMonthlySales = dailySales.reduce((sum, d) => sum + d.totalSales, 0);
-  const totalOrders = dailySales.reduce((sum, d) => sum + d.orderCount, 0);
+
+  // 일별 매출 (최근 14일)
+  const dailyMap = new Map<string, number>();
+  thisMonthOrders.forEach((o) => {
+    const date = o.createdAt?.slice(0, 10) ?? '';
+    dailyMap.set(date, (dailyMap.get(date) ?? 0) + o.totalAmount);
+  });
+  const sortedDays = [...dailyMap.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-14);
+
+  // 시간별 매출 (오늘)
+  const hourlyMap = new Map<string, number>();
+  todayOrders.forEach((o) => {
+    const hour = o.createdAt?.slice(11, 13) ?? '';
+    hourlyMap.set(hour, (hourlyMap.get(hour) ?? 0) + o.totalAmount);
+  });
+  const sortedHours = [...hourlyMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+
+  // 결제 수단별 (오늘)
+  const todayCard = todayOrders.filter((o) => o.paymentMethod === 'CARD').reduce((s, o) => s + o.totalAmount, 0);
+  const todayCash = todayOrders.filter((o) => o.paymentMethod === 'CASH').reduce((s, o) => s + o.totalAmount, 0);
+  const todayApp = todayOrders.filter((o) => o.paymentMethod === 'APP').reduce((s, o) => s + o.totalAmount, 0);
 
   const barData = {
-    labels: [...dailySales].reverse().slice(-14).map((d) => d.statDate.slice(5)),
+    labels: sortedDays.map(([date]) => date.slice(5)),
     datasets: [{
       label: '일별 매출',
-      data: [...dailySales].reverse().slice(-14).map((d) => d.totalSales),
+      data: sortedDays.map(([, sales]) => sales),
       backgroundColor: PRIMARY + '90',
       borderColor: PRIMARY,
       borderWidth: 1,
@@ -91,12 +108,10 @@ export function DashboardPage() {
   };
 
   const lineData = {
-    labels: [...hourlySales].sort((a, b) => a.statHour.localeCompare(b.statHour))
-      .map((h) => h.statHour.slice(11, 13) + '시'),
+    labels: sortedHours.map(([hour]) => hour + '시'),
     datasets: [{
       label: '시간별 매출',
-      data: [...hourlySales].sort((a, b) => a.statHour.localeCompare(b.statHour))
-        .map((h) => h.totalSales),
+      data: sortedHours.map(([, sales]) => sales),
       borderColor: PRIMARY_LIGHT,
       backgroundColor: PRIMARY + '20',
       fill: true,
@@ -106,10 +121,10 @@ export function DashboardPage() {
     }],
   };
 
-  const paymentData = todaySales ? {
+  const paymentData = (todayCard || todayCash || todayApp) ? {
     labels: ['카드', '현금', '앱'],
     datasets: [{
-      data: [todaySales.cardSales, todaySales.cashSales, todaySales.appSales ?? 0],
+      data: [todayCard, todayCash, todayApp],
       backgroundColor: [PRIMARY, '#6B8EFF', '#A5B8FF'],
       borderWidth: 0,
     }],
@@ -139,11 +154,11 @@ export function DashboardPage() {
       <div className="grid grid-cols-4 gap-4">
         <KpiCard
           title="이번달 매출" value={formatMoney(totalMonthlySales)}
-          icon={TrendingUp} color={PRIMARY} sub={`오늘 ${formatMoney(todaySales?.totalSales ?? 0)}`}
+          icon={TrendingUp} color={PRIMARY} sub={`오늘 ${formatMoney(todayTotalSales)}`}
         />
         <KpiCard
           title="이번달 주문" value={`${totalOrders}건`}
-          icon={ShoppingCart} color="#10B981" sub={`오늘 ${todaySales?.orderCount ?? 0}건`}
+          icon={ShoppingCart} color="#10B981" sub={`오늘 ${todayOrders.length}건`}
         />
         <KpiCard
           title="재고 부족" value={`${lowStockCount}개`}
@@ -162,7 +177,7 @@ export function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">일별 매출 (최근 14일)</h3>
           </div>
-          {dailySales.length > 0 ? (
+          {sortedDays.length > 0 ? (
             <Bar data={barData} options={chartOptions} height={100} />
           ) : (
             <div className="h-40 flex items-center justify-center text-gray-400 text-sm">
@@ -189,7 +204,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2 bg-white rounded-2xl p-5 shadow-sm">
           <h3 className="font-semibold text-gray-900 mb-4">시간별 매출 (오늘)</h3>
-          {hourlySales.length > 0 ? (
+          {sortedHours.length > 0 ? (
             <Line data={lineData} options={chartOptions} height={80} />
           ) : (
             <div className="h-40 flex items-center justify-center text-gray-400 text-sm">
