@@ -120,6 +120,22 @@ export function LoginPage() {
                 {loading ? '로그인 중...' : '로그인'}
               </button>
 
+              <div className="relative flex items-center gap-3">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-xs text-gray-400 shrink-0">또는</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => onSubmit({ email: 'test@test.com', password: 'testtest123!' })}
+                className="w-full py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-60 border-2 border-dashed"
+                style={{ borderColor: '#3454D0', color: '#3454D0', backgroundColor: '#3454D010' }}
+              >
+                {loading ? '로그인 중...' : '👀 면접관용 데모 로그인'}
+              </button>
+
               <p className="text-center text-sm text-gray-500">
                 계정이 없으신가요?{' '}
                 <Link to="/register" className="font-medium" style={{ color: '#3454D0' }}>
