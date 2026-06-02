@@ -9,7 +9,9 @@
       "Bash(Get-ChildItem -Path \"E:\\\\08 2026 이직준비\\\\01 Project\\\\02 카페운영관리시스템\\\\cafe-admin\" -Force)",
       "Bash(Select-Object Name, PSIsContainer)",
       "Bash(find \"E:\\\\08 2026 이직준비\\\\01 Project\\\\02 카페운영관리시스템\" -type d -name \"src\" 2>/dev/null)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(Get-ChildItem -Path \"E:\\\\08 2026 이직준비\\\\01 Project\\\\02 카페운영관리시스템\\\\cafe-admin\" -Recurse -Name)",
+      "Bash(Select-String -Pattern \"\\(MenuPage|menu\\\\.ts|index\\\\.ts\\)\")"
     ]
   }
 }

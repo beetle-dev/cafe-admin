@@ -13,8 +13,10 @@ export const createMenu = async (formData: FormData) => {
   return res.data;
 };
 
-export const updateMenu = async (id: number, dto: Record<string, unknown>) => {
-  const res = await storeClient.patch<CommonResponse<null>>(`/menus/${id}`, dto);
+export const updateMenu = async (id: number, formData: FormData) => {
+  const res = await storeClient.patch<CommonResponse<null>>(`/menus/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return res.data;
 };
 

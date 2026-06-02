@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Plus, Image, Search, Tag } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, Image, Search, Tag, X, Upload } from 'lucide-react';
 import { getMenus, createMenu, updateMenu, getMenuCategories, createMenuCategory } from '../api/menu';
 import type { MenuResDto, MenuCategoryResDto } from '../types';
 import { Modal } from '../components/common/Modal';
@@ -32,7 +32,10 @@ export function MenuPage() {
   const [showCategory, setShowCategory] = useState(false);
   const [editMenu, setEditMenu] = useState<MenuResDto | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [deleteImage, setDeleteImage] = useState(false);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<MenuForm>();
   const { register: regCat, handleSubmit: hsCat, reset: resetCat } = useForm<CategoryForm>();
@@ -57,7 +60,13 @@ export function MenuPage() {
   useEffect(() => { fetchMenus(); }, [page, catFilter]);
   useEffect(() => { fetchCategories(); }, []);
 
-  const openCreate = () => { reset({ isActive: true }); setImageFile(null); setShowCreate(true); };
+  const openCreate = () => {
+    reset({ isActive: true });
+    setImageFile(null);
+    setImagePreview(null);
+    setDeleteImage(false);
+    setShowCreate(true);
+  };
   const openEdit = (menu: MenuResDto) => {
     setEditMenu(menu);
     setValue('name', menu.name);
@@ -67,23 +76,47 @@ export function MenuPage() {
     setValue('menuCategory', menu.menuCategory);
     setValue('isActive', menu.isActive);
     setImageFile(null);
+    setImagePreview(menu.imageUrl ?? null);
+    setDeleteImage(false);
     setShowCreate(true);
+  };
+
+  const handleImageChange = (file: File | null) => {
+    setImageFile(file);
+    setDeleteImage(false);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setImagePreview(url);
+    }
+  };
+
+  const handleImageDelete = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setDeleteImage(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const buildFormData = (data: MenuForm) => {
+    const fd = new FormData();
+    fd.append('name', data.name);
+    fd.append('description', data.description ?? '');
+    fd.append('price', String(data.price));
+    fd.append('cost', String(data.cost ?? 0));
+    fd.append('menuCategory', data.menuCategory);
+    fd.append('isActive', String(data.isActive ?? true));
+    if (imageFile) fd.append('image', imageFile);
+    if (deleteImage) fd.append('deleteImage', 'true');
+    return fd;
   };
 
   const onSubmit = async (data: MenuForm) => {
     setSaving(true);
     try {
+      const fd = buildFormData(data);
       if (editMenu) {
-        await updateMenu(editMenu.id, { ...data });
+        await updateMenu(editMenu.id, fd);
       } else {
-        const fd = new FormData();
-        fd.append('name', data.name);
-        fd.append('description', data.description ?? '');
-        fd.append('price', String(data.price));
-        fd.append('cost', String(data.cost ?? 0));
-        fd.append('menuCategory', data.menuCategory);
-        fd.append('isActive', String(data.isActive ?? true));
-        if (imageFile) fd.append('image', imageFile);
         await createMenu(fd);
       }
       setShowCreate(false);
@@ -232,15 +265,32 @@ export function MenuPage() {
             </div>
           </div>
 
-          {!editMenu && (
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">이미지</label>
-              <input type="file" accept="image/*"
-                onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:text-white cursor-pointer"
-                style={{ '--file-bg': '#3454D0' } as React.CSSProperties} />
-            </div>
-          )}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">이미지</label>
+            {imagePreview ? (
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-100 group">
+                <img src={imagePreview} alt="미리보기" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-sm font-medium text-gray-800 hover:bg-gray-100">
+                    <Upload size={14} /> 변경
+                  </button>
+                  <button type="button" onClick={handleImageDelete}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-red-500 rounded-lg text-sm font-medium text-white hover:bg-red-600">
+                    <X size={14} /> 삭제
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="w-full aspect-video rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-[#3454D0] hover:text-[#3454D0] transition-colors bg-gray-50">
+                <Upload size={24} />
+                <span className="text-sm">클릭하여 이미지 업로드</span>
+              </button>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+              onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)} />
+          </div>
 
           <div className="flex items-center gap-2">
             <input type="checkbox" id="isActive" {...register('isActive')} className="rounded" />
