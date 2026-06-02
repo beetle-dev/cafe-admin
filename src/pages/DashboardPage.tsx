@@ -11,6 +11,11 @@ import { getInventory } from '../api/inventory';
 import { useAuthStore } from '../store/authStore';
 import type { OrderResDto, StoreInventoryResDto } from '../types';
 
+function toLocalISOString(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend, Filler);
 
 const PRIMARY = '#3454D0';
@@ -47,31 +52,41 @@ function KpiCard({
 export function DashboardPage() {
   const { selectedStoreId } = useAuthStore();
   const [monthOrders, setMonthOrders] = useState<OrderResDto[]>([]);
+  const [todayOrders, setTodayOrders] = useState<OrderResDto[]>([]);
   const [recentOrders, setRecentOrders] = useState<OrderResDto[]>([]);
   const [inventory, setInventory] = useState<StoreInventoryResDto[]>([]);
 
   useEffect(() => {
     if (!selectedStoreId) return;
-    getOrders(selectedStoreId, { size: 2000, sort: 'createdAt', direction: 'DESC' })
-      .then((r) => r.data && setMonthOrders(r.data.content)).catch(() => {});
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    getOrders(selectedStoreId, {
+      orderStartDate: toLocalISOString(monthStart),
+      orderEndDate: toLocalISOString(now),
+      size: 2000, sort: 'createdAt', direction: 'DESC',
+    }).then((r) => r.data && setMonthOrders(r.data.content)).catch(() => {});
+
+    getOrders(selectedStoreId, {
+      orderStartDate: toLocalISOString(todayStart),
+      orderEndDate: toLocalISOString(todayEnd),
+      size: 1000, sort: 'createdAt', direction: 'DESC',
+    }).then((r) => r.data && setTodayOrders(r.data.content)).catch(() => {});
+
     getOrders(selectedStoreId, { size: 5, sort: 'createdAt', direction: 'DESC' })
       .then((r) => r.data && setRecentOrders(r.data.content)).catch(() => {});
     getInventory(selectedStoreId, { size: 100 })
       .then((r) => r.data && setInventory(r.data.content)).catch(() => {});
   }, [selectedStoreId]);
 
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  const monthStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
-
-  const completedOrders = monthOrders.filter((o) => o.status === 'COMPLETED');
-  const thisMonthOrders = completedOrders.filter((o) => o.createdAt?.startsWith(monthStr));
-  const todayOrders = completedOrders.filter((o) => o.createdAt?.startsWith(todayStr));
+  const thisMonthOrders = monthOrders.filter((o) => o.status === 'COMPLETED');
+  const completedTodayOrders = todayOrders.filter((o) => o.status === 'COMPLETED');
 
   const totalMonthlySales = thisMonthOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const totalOrders = thisMonthOrders.length;
-  const todayTotalSales = todayOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const todayTotalSales = completedTodayOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const lowStockCount = inventory.filter((i) => i.isLow).length;
 
   // 일별 매출 (최근 14일)
@@ -84,16 +99,16 @@ export function DashboardPage() {
 
   // 시간별 매출 (오늘)
   const hourlyMap = new Map<string, number>();
-  todayOrders.forEach((o) => {
+  completedTodayOrders.forEach((o) => {
     const hour = o.createdAt?.slice(11, 13) ?? '';
     hourlyMap.set(hour, (hourlyMap.get(hour) ?? 0) + o.totalAmount);
   });
   const sortedHours = [...hourlyMap.entries()].sort(([a], [b]) => a.localeCompare(b));
 
   // 결제 수단별 (오늘)
-  const todayCard = todayOrders.filter((o) => o.paymentMethod === 'CARD').reduce((s, o) => s + o.totalAmount, 0);
-  const todayCash = todayOrders.filter((o) => o.paymentMethod === 'CASH').reduce((s, o) => s + o.totalAmount, 0);
-  const todayApp = todayOrders.filter((o) => o.paymentMethod === 'APP').reduce((s, o) => s + o.totalAmount, 0);
+  const todayCard = completedTodayOrders.filter((o) => o.paymentMethod === 'CARD').reduce((s, o) => s + o.totalAmount, 0);
+  const todayCash = completedTodayOrders.filter((o) => o.paymentMethod === 'CASH').reduce((s, o) => s + o.totalAmount, 0);
+  const todayApp = completedTodayOrders.filter((o) => o.paymentMethod === 'APP').reduce((s, o) => s + o.totalAmount, 0);
 
   const barData = {
     labels: sortedDays.map(([date]) => date.slice(5)),
@@ -158,7 +173,7 @@ export function DashboardPage() {
         />
         <KpiCard
           title="이번달 주문" value={`${totalOrders}건`}
-          icon={ShoppingCart} color="#10B981" sub={`오늘 ${todayOrders.length}건`}
+          icon={ShoppingCart} color="#10B981" sub={`오늘 ${completedTodayOrders.length}건`}
         />
         <KpiCard
           title="재고 부족" value={`${lowStockCount}개`}

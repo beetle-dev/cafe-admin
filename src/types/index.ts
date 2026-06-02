@@ -231,6 +231,11 @@ export interface SearchDto {
   direction?: 'ASC' | 'DESC';
 }
 
+export interface OrderSearchDto extends SearchDto {
+  orderStartDate?: string;
+  orderEndDate?: string;
+}
+
 export interface InventorySearchDto extends SearchDto {
   ingredientName?: string;
   low?: boolean;

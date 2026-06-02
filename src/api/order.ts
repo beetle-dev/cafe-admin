@@ -1,7 +1,7 @@
 import { storeClient } from './client';
-import type { CommonResponse, PageResponse, OrderResDto, OrderCreateReqDto, OrderUpdateReqDto, SearchDto } from '../types';
+import type { CommonResponse, PageResponse, OrderResDto, OrderCreateReqDto, OrderUpdateReqDto, OrderSearchDto } from '../types';
 
-export const getOrders = async (storeId: number, params?: SearchDto) => {
+export const getOrders = async (storeId: number, params?: OrderSearchDto) => {
   const res = await storeClient.get<CommonResponse<PageResponse<OrderResDto>>>(`/stores/${storeId}/orders`, { params });
   return res.data;
 };
