@@ -13,7 +13,7 @@ interface MenuForm {
   description: string;
   price: number;
   cost: number;
-  menuCategory: string;
+  menuCategoryId: number;
   isActive: boolean;
 }
 
@@ -73,7 +73,7 @@ export function MenuPage() {
     setValue('description', menu.description);
     setValue('price', menu.price);
     setValue('cost', menu.cost);
-    setValue('menuCategory', menu.menuCategory);
+    setValue('menuCategoryId', menu.menuCategoryId);
     setValue('isActive', menu.isActive);
     setImageFile(null);
     setImagePreview(menu.imageUrl ?? null);
@@ -103,7 +103,7 @@ export function MenuPage() {
     fd.append('description', data.description ?? '');
     fd.append('price', String(data.price));
     fd.append('cost', String(data.cost ?? 0));
-    fd.append('menuCategory', data.menuCategory);
+    fd.append('menuCategoryId', String(data.menuCategoryId));
     fd.append('isActive', String(data.isActive ?? true));
     if (imageFile) fd.append('image', imageFile);
     if (deleteImage) fd.append('deleteImage', 'true');
@@ -237,12 +237,12 @@ export function MenuPage() {
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1.5">카테고리 *</label>
-              <select {...register('menuCategory', { required: true })}
+              <select {...register('menuCategoryId', { required: true, valueAsNumber: true })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#3454D0]">
                 <option value="">선택</option>
-                {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              {errors.menuCategory && <p className="text-red-500 text-xs mt-1">필수 선택</p>}
+              {errors.menuCategoryId && <p className="text-red-500 text-xs mt-1">필수 선택</p>}
             </div>
           </div>
 
