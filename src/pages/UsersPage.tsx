@@ -15,8 +15,8 @@ interface UserForm {
   role: Role;
 }
 
-const roleLabel: Record<Role, string> = { ADMIN: '관리자', MANAGER: '매니저', STAFF: '직원' };
-const roleVariant: Record<Role, 'danger' | 'warning' | 'default'> = { ADMIN: 'danger', MANAGER: 'warning', STAFF: 'default' };
+const roleLabel: Record<Role, string> = { ADMIN: '관리자', MANAGER: '매니저', STAFF: '직원', PENDING: '대기' };
+const roleVariant: Record<Role, 'danger' | 'warning' | 'default'> = { ADMIN: 'danger', MANAGER: 'warning', STAFF: 'default', PENDING: 'default' };
 
 export function UsersPage() {
   const [users, setUsers] = useState<UserResDto[]>([]);
@@ -146,8 +146,8 @@ export function UsersPage() {
                         <Badge variant={roleVariant[user.role]}>{roleLabel[user.role]}</Badge>
                       </td>
                       <td className="px-6 py-3">
-                        <Badge variant={user.isActive ? 'success' : 'danger'}>
-                          {user.isActive ? '활성' : '비활성'}
+                        <Badge variant={user.active ? 'success' : 'danger'}>
+                          {user.active ? '활성' : '비활성'}
                         </Badge>
                       </td>
                       <td className="px-6 py-3 text-sm text-gray-500">
@@ -205,6 +205,7 @@ export function UsersPage() {
               <option value="STAFF">직원</option>
               <option value="MANAGER">매니저</option>
               <option value="ADMIN">관리자</option>
+              <option value="PENDING">대기</option>
             </select>
           </div>
 

@@ -16,7 +16,7 @@ export interface PageResponse<T> {
 }
 
 // Auth
-export type Role = 'ADMIN' | 'MANAGER' | 'STAFF';
+export type Role = 'ADMIN' | 'MANAGER' | 'STAFF' | 'PENDING';
 
 export interface UserResDto {
   id: number;
@@ -24,7 +24,7 @@ export interface UserResDto {
   email: string;
   name: string;
   role: Role;
-  isActive: boolean;
+  active: boolean;
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -34,7 +34,7 @@ export interface UserReqDto {
   email: string;
   password: string;
   name: string;
-  role?: Role;
+  role: Role;
 }
 
 export interface UsersSearchDto {
