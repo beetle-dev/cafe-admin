@@ -11,14 +11,18 @@ const navItems = [
   { to: '/menus', icon: UtensilsCrossed, label: '메뉴 관리' },
   { to: '/inventory', icon: Package, label: '재고 관리' },
   { to: '/sales', icon: BarChart2, label: '매출 통계' },
-  { to: '/users', icon: Users, label: '직원 관리' },
+  { to: '/users', icon: Users, label: '직원 관리', managerUp: true },
   { to: '/stores', icon: Store, label: '매장 관리', adminOnly: true },
   { to: '/alarms', icon: Bell, label: '알람' },
 ];
 
 export function Sidebar() {
   const { user } = useAuthStore();
-  const visibleNavItems = navItems.filter(item => !item.adminOnly || user?.role === 'ADMIN');
+  const visibleNavItems = navItems.filter(item => {
+    if (item.adminOnly) return user?.roleCode === 'ADMIN';
+    if (item.managerUp) return user?.roleCode === 'ADMIN' || user?.roleCode === 'MANAGER';
+    return true;
+  });
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-60 flex flex-col" style={{ backgroundColor: '#1E2D6E' }}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Info } from 'lucide-react';
 import { getUsers, createUser, updateUser } from '../api/auth';
 import type { UserResDto, Role } from '../types';
 import { Badge } from '../components/common/Badge';
@@ -13,9 +13,19 @@ interface UserForm {
   password: string;
   name: string;
   role: Role;
+  isActive: boolean;
 }
 
-const roleLabel: Record<Role, string> = { ADMIN: '관리자', MANAGER: '매니저', STAFF: '직원', PENDING: '대기' };
+const ROLES: { code: Role; name: string; level: number }[] = (
+  [
+    { code: 'PENDING', name: '대기', level: 1 },
+    { code: 'STAFF', name: '스태프', level: 2 },
+    { code: 'MANAGER', name: '점장', level: 3 },
+    { code: 'ADMIN', name: '관리자', level: 4 },
+  ] as { code: Role; name: string; level: number }[]
+).sort((a, b) => a.level - b.level);
+
+const roleLabel: Record<Role, string> = Object.fromEntries(ROLES.map((r) => [r.code, r.name])) as Record<Role, string>;
 const roleVariant: Record<Role, 'danger' | 'warning' | 'default'> = { ADMIN: 'danger', MANAGER: 'warning', STAFF: 'default', PENDING: 'default' };
 
 export function UsersPage() {
@@ -30,7 +40,8 @@ export function UsersPage() {
   const [editUser, setEditUser] = useState<UserResDto | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<UserForm>();
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<UserForm>();
+  const activeValue = watch('isActive');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -56,7 +67,8 @@ export function UsersPage() {
     setEditUser(user);
     setValue('email', user.email);
     setValue('name', user.name);
-    setValue('role', user.role);
+    setValue('role', user.roleCode);
+    setValue('isActive', user.active);
     setValue('password', '');
     setShowCreate(true);
   };
@@ -65,7 +77,7 @@ export function UsersPage() {
     setSaving(true);
     try {
       if (editUser) {
-        const payload: Partial<UserForm> = { name: data.name, role: data.role };
+        const payload: Partial<UserForm> = { name: data.name, role: data.role, isActive: data.isActive };
         if (data.password) payload.password = data.password;
         await updateUser(editUser.uuid, payload);
       } else {
@@ -92,6 +104,11 @@ export function UsersPage() {
           style={{ backgroundColor: '#3454D0' }}>
           <Plus size={15} /> 직원 추가
         </button>
+      </div>
+
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 text-blue-700 text-sm">
+        <Info size={15} className="shrink-0" />
+        해당 메뉴는 관리자, 점장만 접근할 수 있습니다.
       </div>
 
       {/* Filter */}
@@ -129,7 +146,7 @@ export function UsersPage() {
                   <tr className="text-xs text-gray-500 border-b border-gray-100">
                     <th className="text-left px-6 py-3 font-medium">이름</th>
                     <th className="text-left px-6 py-3 font-medium">이메일</th>
-                    <th className="text-left px-6 py-3 font-medium">역할</th>
+                    <th className="text-left px-6 py-3 font-medium">권한</th>
                     <th className="text-left px-6 py-3 font-medium">상태</th>
                     <th className="text-left px-6 py-3 font-medium">최근 로그인</th>
                     <th className="text-left px-6 py-3 font-medium">작업</th>
@@ -143,7 +160,7 @@ export function UsersPage() {
                       <td className="px-6 py-3 text-sm font-medium text-gray-900">{user.name}</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{user.email}</td>
                       <td className="px-6 py-3">
-                        <Badge variant={roleVariant[user.role]}>{roleLabel[user.role]}</Badge>
+                        <Badge variant={roleVariant[user.roleCode]}>{user.roleName}</Badge>
                       </td>
                       <td className="px-6 py-3">
                         <Badge variant={user.active ? 'success' : 'danger'}>
@@ -202,12 +219,27 @@ export function UsersPage() {
             <label className="text-sm font-medium text-gray-700 block mb-1.5">역할 *</label>
             <select {...register('role', { required: true })}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#3454D0]">
-              <option value="STAFF">직원</option>
-              <option value="MANAGER">매니저</option>
-              <option value="ADMIN">관리자</option>
-              <option value="PENDING">대기</option>
+              {ROLES.map((r) => (
+                <option key={r.code} value={r.code}>{r.name}</option>
+              ))}
             </select>
           </div>
+
+          {editUser && (
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">계정 상태</label>
+              <input type="hidden" {...register('isActive')} />
+              <button type="button" onClick={() => setValue('isActive', !activeValue)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                  activeValue ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 bg-gray-50 text-gray-500'
+                }`}>
+                <span className={`w-9 h-5 rounded-full relative transition-colors ${activeValue ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${activeValue ? 'left-[18px]' : 'left-0.5'}`} />
+                </span>
+                {activeValue ? '활성' : '비활성'}
+              </button>
+            </div>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={() => { setShowCreate(false); setEditUser(null); }}

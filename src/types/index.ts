@@ -23,7 +23,9 @@ export interface UserResDto {
   uuid: string;
   email: string;
   name: string;
-  role: Role;
+  roleCode: Role;
+  roleName: string;
+  roleLevel: number;
   active: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -35,6 +37,7 @@ export interface UserReqDto {
   password: string;
   name: string;
   role: Role;
+  isActive?: boolean;
 }
 
 export interface UsersSearchDto {
