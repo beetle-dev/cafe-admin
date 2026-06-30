@@ -22,7 +22,7 @@ export function RegisterPage() {
     setLoading(true);
     setError('');
     try {
-      await createUser({ email: data.email, password: data.password, name: data.name });
+      await createUser({ email: data.email, password: data.password, name: data.name, role: 'PENDING' });
       alert('회원가입이 완료되었습니다. 로그인해주세요.');
       navigate('/login');
     } catch (e: unknown) {
