@@ -56,40 +56,6 @@ export interface UsersSearchDto {
   role?: Role;
 }
 
-// Store
-export interface StoreResDto {
-  id: number;
-  name: string;
-  email: string;
-  address: string;
-  phone: string;
-  openTime: string;
-  closeTime: string;
-  active: boolean;
-}
-
-export interface StoreReqDto {
-  name: string;
-  email: string;
-  active?: boolean;
-  address?: string;
-  phone?: string;
-  openTime?: string;
-  closeTime?: string;
-}
-
-export interface StoreSearchDto {
-  page?: number;
-  size?: number;
-  sort?: string;
-  direction?: 'ASC' | 'DESC';
-  name?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  active?: boolean;
-}
-
 // Menu
 export interface MenuResDto {
   id: number;
@@ -197,39 +163,6 @@ export interface InventoryReqDto {
   quantity: number;
   changeType: ChangeType;
   note?: string;
-}
-
-// Sales
-export interface SalesStatsDailyResDto {
-  id: number;
-  storeId: number;
-  statDate: string;
-  orderCount: number;
-  totalSales: number;
-  cardSales: number;
-  cashSales: number;
-  appSales: number;
-  avgOrderPrice: number;
-  peakHour: number;
-  createdAt: string;
-}
-
-export interface SalesStatsHourlyResDto {
-  id: number;
-  storeId: number;
-  statHour: string;
-  orderCount: number;
-  totalSales: number;
-  cardSales: number;
-  cashSales: number;
-  createdAt: string;
-}
-
-export interface SalesHistorySearchDto {
-  from: string;
-  to: string;
-  page?: number;
-  size?: number;
 }
 
 // Search base

@@ -34,11 +34,12 @@ export function LoginPage() {
         setError(res.message ?? '로그인에 실패했습니다.');
       }
     } catch (e: unknown) {
-      const err = e as { response?: { status?: number; data?: { message?: string } } };
-      if (err.response?.status === 403) {
-        alert('비활성화된 계정입니다.');
+      const err = e as { response?: { status?: number; data?: { code?: string; message?: string } } };
+      const body = err.response?.data;
+      if (err.response?.status === 403 && body?.code) {
+        alert(body.message ?? '로그인할 수 없는 계정입니다.');
       } else {
-        setError(err.response?.data?.message ?? '이메일 또는 비밀번호를 확인해주세요.');
+        setError(body?.message ?? '이메일 또는 비밀번호를 확인해주세요.');
       }
     } finally {
       setLoading(false);

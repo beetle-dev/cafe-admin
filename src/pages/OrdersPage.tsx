@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus, Search, X, ChevronRight } from 'lucide-react';
 import { getOrders, createOrder, cancelOrder } from '../api/order';
 import { getMenus } from '../api/menu';
-import { useAuthStore } from '../store/authStore';
 import type { OrderResDto, MenuResDto, OrderItemReqDto } from '../types';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
@@ -14,7 +13,6 @@ const paymentMap = { CARD: '카드', CASH: '현금', APP: '앱' };
 const statusVariant = { COMPLETED: 'success', CANCELLED: 'danger', REFUNDED: 'warning' } as const;
 
 export function OrdersPage() {
-  const { selectedStoreId } = useAuthStore();
   const [orders, setOrders] = useState<OrderResDto[]>([]);
   const [menus, setMenus] = useState<MenuResDto[]>([]);
   const [page, setPage] = useState(0);
@@ -23,6 +21,7 @@ export function OrdersPage() {
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderResDto | null>(null);
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
   // New order state
   const [items, setItems] = useState<{ menu: MenuResDto; quantity: number }[]>([]);
@@ -30,11 +29,14 @@ export function OrdersPage() {
   const [menuSearch, setMenuSearch] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const fetchOrders = async () => {
-    if (!selectedStoreId) return;
+  const fetchOrders = async (range = dateRange, p = page) => {
     setLoading(true);
     try {
-      const res = await getOrders(selectedStoreId, { page, size: 20, sort: 'createdAt', direction: 'DESC' });
+      const res = await getOrders({
+        page: p, size: 20, sort: 'createdAt', direction: 'DESC',
+        ...(range.from && { orderStartDate: range.from + 'T00:00:00' }),
+        ...(range.to && { orderEndDate: range.to + 'T23:59:59' }),
+      });
       if (res.data) {
         setOrders(res.data.content);
         setTotalPages(res.data.totalPages);
@@ -45,7 +47,10 @@ export function OrdersPage() {
     }
   };
 
-  useEffect(() => { fetchOrders(); }, [selectedStoreId, page]);
+  useEffect(() => { fetchOrders(dateRange, page); }, [page]);
+
+  const onSearch = () => { setPage(0); fetchOrders(dateRange, 0); };
+  const onReset = () => { const e = { from: '', to: '' }; setDateRange(e); setPage(0); fetchOrders(e, 0); };
 
   useEffect(() => {
     if (!showCreate) return;
@@ -68,7 +73,7 @@ export function OrdersPage() {
   const totalAmount = items.reduce((sum, i) => sum + i.menu.price * i.quantity, 0);
 
   const handleCreate = async () => {
-    if (!selectedStoreId || items.length === 0) return;
+    if (items.length === 0) return;
     setCreating(true);
     try {
       const dto = {
@@ -76,7 +81,7 @@ export function OrdersPage() {
         paymentMethod,
         orderItemReqDtos: items.map<OrderItemReqDto>((i) => ({ menuId: i.menu.id, quantity: i.quantity })),
       };
-      await createOrder(selectedStoreId, dto);
+      await createOrder(dto);
       setShowCreate(false);
       setItems([]);
       setPage(0);
@@ -90,10 +95,9 @@ export function OrdersPage() {
   };
 
   const handleCancel = async (order: OrderResDto, status: 'CANCELLED' | 'REFUNDED') => {
-    if (!selectedStoreId) return;
     if (!confirm(`주문을 ${status === 'CANCELLED' ? '취소' : '환불'} 처리하시겠습니까?`)) return;
     try {
-      await cancelOrder(selectedStoreId, order.id, { status });
+      await cancelOrder(order.id, { status });
       fetchOrders();
       setSelectedOrder(null);
     } catch (e: unknown) {
@@ -120,6 +124,22 @@ export function OrdersPage() {
         </button>
       </div>
 
+      <div className="flex items-center gap-2 bg-white rounded-xl p-2 shadow-sm w-fit">
+        <input type="date" value={dateRange.from} onChange={(e) => setDateRange((p) => ({ ...p, from: e.target.value }))}
+          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-[#3454D0]" />
+        <span className="text-gray-400">~</span>
+        <input type="date" value={dateRange.to} onChange={(e) => setDateRange((p) => ({ ...p, to: e.target.value }))}
+          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-[#3454D0]" />
+        <button onClick={onSearch}
+          className="px-3 py-1.5 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: '#3454D0' }}>
+          검색
+        </button>
+        <button onClick={onReset}
+          className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50">
+          초기화
+        </button>
+      </div>
+
       <div className="bg-white rounded-2xl shadow-sm">
         {loading ? <Loading /> : (
           <>
@@ -133,14 +153,14 @@ export function OrdersPage() {
                     <th className="text-left px-6 py-3 font-medium">결제수단</th>
                     <th className="text-left px-6 py-3 font-medium">상태</th>
                     <th className="text-left px-6 py-3 font-medium">일시</th>
-                    <th className="text-left px-6 py-3 font-medium">작업</th>
+                    <th className="w-8 px-6 py-3"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {orders.length === 0 ? (
-                    <tr><td colSpan={7} className="text-center py-12 text-gray-400">주문이 없습니다</td></tr>
+                    <tr><td colSpan={6} className="text-center py-12 text-gray-400">주문이 없습니다</td></tr>
                   ) : orders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
+                    <tr key={order.id} className="group border-b border-gray-50 hover:bg-blue-50/60 cursor-pointer transition-colors"
                       onClick={() => setSelectedOrder(order)}>
                       <td className="px-6 py-3 text-sm font-mono text-gray-900">{order.orderNumber}</td>
                       <td className="px-6 py-3 text-sm text-gray-600">
@@ -157,13 +177,7 @@ export function OrdersPage() {
                         {order.createdAt?.slice(0, 16).replace('T', ' ')}
                       </td>
                       <td className="px-6 py-3">
-                        {order.status === 'COMPLETED' && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleCancel(order, 'CANCELLED'); }}
-                            className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
-                            취소
-                          </button>
-                        )}
+                        <ChevronRight size={16} className="text-gray-300 group-hover:text-[#3454D0] transition-colors" />
                       </td>
                     </tr>
                   ))}

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, UtensilsCrossed, Package,
-  BarChart2, Users, Store, Bell, Coffee
+  BarChart2, Users, Bell, Coffee
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -12,14 +12,12 @@ const navItems = [
   { to: '/inventory', icon: Package, label: '재고 관리' },
   { to: '/sales', icon: BarChart2, label: '매출 통계' },
   { to: '/users', icon: Users, label: '직원 관리', managerUp: true },
-  { to: '/stores', icon: Store, label: '매장 관리', adminOnly: true },
   { to: '/alarms', icon: Bell, label: '알람' },
 ];
 
 export function Sidebar() {
   const { user } = useAuthStore();
   const visibleNavItems = navItems.filter(item => {
-    if (item.adminOnly) return user?.roleCode === 'ADMIN';
     if (item.managerUp) return user?.roleCode === 'ADMIN' || user?.roleCode === 'MANAGER';
     return true;
   });

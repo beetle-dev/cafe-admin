@@ -29,3 +29,8 @@ export const createMenuCategory = async (dto: MenuCategoryReqDto) => {
   const res = await storeClient.post<CommonResponse<null>>('/menus/category', dto);
   return res.data;
 };
+
+export const updateMenuCategory = async (id: number, dto: Partial<MenuCategoryReqDto>) => {
+  const res = await storeClient.patch<CommonResponse<null>>(`/menus/category/${id}`, dto);
+  return res.data;
+};

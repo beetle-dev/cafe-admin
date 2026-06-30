@@ -9,7 +9,6 @@ const titleMap: Record<string, string> = {
   '/inventory': '재고 관리',
   '/sales': '매출 통계',
   '/users': '직원 관리',
-  '/stores': '매장 관리',
   '/alarms': '알람',
 };
 

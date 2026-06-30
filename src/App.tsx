@@ -10,7 +10,6 @@ import { MenuPage } from './pages/MenuPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { SalesPage } from './pages/SalesPage';
 import { UsersPage } from './pages/UsersPage';
-import { StoresPage } from './pages/StoresPage';
 import { AlarmPage } from './pages/AlarmPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { PageLoading } from './components/common/Loading';
@@ -48,7 +47,6 @@ export default function App() {
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="sales" element={<SalesPage />} />
           <Route path="users" element={<UsersPage />} />
-          <Route path="stores" element={<StoresPage />} />
           <Route path="alarms" element={<AlarmPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

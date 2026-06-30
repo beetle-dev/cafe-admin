@@ -1,19 +1,120 @@
 import { useEffect, useState } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
-import { getDailySales, getHourlySales } from '../api/sales';
-import { useAuthStore } from '../store/authStore';
-import type { SalesStatsDailyResDto, SalesStatsHourlyResDto } from '../types';
+import { getOrders } from '../api/order';
+import type { OrderResDto } from '../types';
 import { Loading } from '../components/common/Loading';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler);
 
 const PRIMARY = '#3454D0';
 
+interface DailyStat {
+  statDate: string;
+  orderCount: number;
+  totalSales: number;
+  cardSales: number;
+  cashSales: number;
+  appSales: number;
+  avgOrderPrice: number;
+  peakHour: number | null;
+}
+
+interface HourlyStat {
+  statHour: string;
+  orderCount: number;
+  totalSales: number;
+  cardSales: number;
+  cashSales: number;
+}
+
+interface MenuStat {
+  menuName: string;
+  quantity: number;
+  totalSales: number;
+}
+
+function sumBy(orders: OrderResDto[], method: 'CARD' | 'CASH' | 'APP') {
+  return orders.filter((o) => o.paymentMethod === method).reduce((s, o) => s + o.totalAmount, 0);
+}
+
+function buildDailyStats(orders: OrderResDto[]): DailyStat[] {
+  const byDate = new Map<string, OrderResDto[]>();
+  orders.forEach((o) => {
+    const date = o.createdAt?.slice(0, 10) ?? '';
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date)!.push(o);
+  });
+
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([statDate, dayOrders]) => {
+      const totalSales = dayOrders.reduce((s, o) => s + o.totalAmount, 0);
+      const orderCount = dayOrders.length;
+
+      const byHour = new Map<number, number>();
+      dayOrders.forEach((o) => {
+        const hour = Number(o.createdAt?.slice(11, 13));
+        byHour.set(hour, (byHour.get(hour) ?? 0) + o.totalAmount);
+      });
+      let peakHour: number | null = null;
+      let peakSales = -1;
+      byHour.forEach((sales, hour) => {
+        if (sales > peakSales) { peakSales = sales; peakHour = hour; }
+      });
+
+      return {
+        statDate,
+        orderCount,
+        totalSales,
+        cardSales: sumBy(dayOrders, 'CARD'),
+        cashSales: sumBy(dayOrders, 'CASH'),
+        appSales: sumBy(dayOrders, 'APP'),
+        avgOrderPrice: orderCount > 0 ? Math.round(totalSales / orderCount) : 0,
+        peakHour,
+      };
+    });
+}
+
+function buildMenuStats(orders: OrderResDto[]): MenuStat[] {
+  const byMenu = new Map<string, { quantity: number; totalSales: number }>();
+  orders.forEach((o) => {
+    o.orderItemResDtoList?.forEach((item) => {
+      const cur = byMenu.get(item.menuName) ?? { quantity: 0, totalSales: 0 };
+      cur.quantity += item.quantity;
+      cur.totalSales += item.subtotal;
+      byMenu.set(item.menuName, cur);
+    });
+  });
+
+  return [...byMenu.entries()]
+    .map(([menuName, v]) => ({ menuName, ...v }))
+    .sort((a, b) => b.totalSales - a.totalSales);
+}
+
+function buildHourlyStats(orders: OrderResDto[]): HourlyStat[] {
+  const byHour = new Map<string, OrderResDto[]>();
+  orders.forEach((o) => {
+    const hour = o.createdAt?.slice(0, 13) ?? '';
+    if (!byHour.has(hour)) byHour.set(hour, []);
+    byHour.get(hour)!.push(o);
+  });
+
+  return [...byHour.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([statHour, hourOrders]) => ({
+      statHour,
+      orderCount: hourOrders.length,
+      totalSales: hourOrders.reduce((s, o) => s + o.totalAmount, 0),
+      cardSales: sumBy(hourOrders, 'CARD'),
+      cashSales: sumBy(hourOrders, 'CASH'),
+    }));
+}
+
 export function SalesPage() {
-  const { selectedStoreId } = useAuthStore();
-  const [dailySales, setDailySales] = useState<SalesStatsDailyResDto[]>([]);
-  const [hourlySales, setHourlySales] = useState<SalesStatsHourlyResDto[]>([]);
+  const [dailySales, setDailySales] = useState<DailyStat[]>([]);
+  const [hourlySales, setHourlySales] = useState<HourlyStat[]>([]);
+  const [menuSales, setMenuSales] = useState<MenuStat[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<'daily' | 'hourly'>('daily');
 
@@ -27,26 +128,21 @@ export function SalesPage() {
   });
 
   const fetchSales = async () => {
-    if (!selectedStoreId) return;
     setLoading(true);
     try {
-      const params = {
-        from: dateRange.from + 'T00:00:00',
-        to: dateRange.to + 'T23:59:59',
-        size: 100,
-      };
-      const [daily, hourly] = await Promise.allSettled([
-        getDailySales(selectedStoreId, params),
-        getHourlySales(selectedStoreId, params),
-      ]);
-      if (daily.status === 'fulfilled' && daily.value.data)
-        setDailySales([...daily.value.data.content].reverse());
-      if (hourly.status === 'fulfilled' && hourly.value.data)
-        setHourlySales([...hourly.value.data.content].sort((a, b) => a.statHour.localeCompare(b.statHour)));
+      const res = await getOrders({
+        orderStartDate: dateRange.from + 'T00:00:00',
+        orderEndDate: dateRange.to + 'T23:59:59',
+        size: 5000, sort: 'createdAt', direction: 'ASC',
+      });
+      const completed = (res.data?.content ?? []).filter((o) => o.status === 'COMPLETED');
+      setDailySales(buildDailyStats(completed));
+      setHourlySales(buildHourlyStats(completed));
+      setMenuSales(buildMenuStats(completed));
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchSales(); }, [selectedStoreId]);
+  useEffect(() => { fetchSales(); }, []);
 
   const totalSales = dailySales.reduce((sum, d) => sum + d.totalSales, 0);
   const totalOrders = dailySales.reduce((sum, d) => sum + d.orderCount, 0);
@@ -210,22 +306,55 @@ export function SalesPage() {
                 </thead>
                 <tbody>
                   {tab === 'daily' ? dailySales.map((d) => (
-                    <tr key={d.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <tr key={d.statDate} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="px-6 py-3 text-sm font-medium text-gray-900">{d.statDate}</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{d.orderCount}</td>
                       <td className="px-6 py-3 text-sm font-semibold text-gray-900">{d.totalSales.toLocaleString()}원</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{d.cardSales.toLocaleString()}원</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{d.cashSales.toLocaleString()}원</td>
-                      <td className="px-6 py-3 text-sm text-gray-600">{d.avgOrderPrice?.toLocaleString()}원</td>
+                      <td className="px-6 py-3 text-sm text-gray-600">{d.avgOrderPrice.toLocaleString()}원</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{d.peakHour != null ? `${d.peakHour}시` : '-'}</td>
                     </tr>
                   )) : hourlySales.map((h) => (
-                    <tr key={h.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-6 py-3 text-sm font-medium text-gray-900">{h.statHour?.slice(0, 16).replace('T', ' ')}</td>
+                    <tr key={h.statHour} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="px-6 py-3 text-sm font-medium text-gray-900">{h.statHour.replace('T', ' ')}시</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{h.orderCount}</td>
                       <td className="px-6 py-3 text-sm font-semibold text-gray-900">{h.totalSales.toLocaleString()}원</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{h.cardSales.toLocaleString()}원</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{h.cashSales.toLocaleString()}원</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Menu stats */}
+          <div className="bg-white rounded-2xl shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900">메뉴별 통계</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-xs text-gray-500 border-b border-gray-100">
+                    <th className="text-left px-6 py-3 font-medium">메뉴</th>
+                    <th className="text-left px-6 py-3 font-medium">판매수량</th>
+                    <th className="text-left px-6 py-3 font-medium">매출</th>
+                    <th className="text-left px-6 py-3 font-medium">비중</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {menuSales.length === 0 ? (
+                    <tr><td colSpan={4} className="text-center py-12 text-gray-400">데이터가 없습니다</td></tr>
+                  ) : menuSales.map((m) => (
+                    <tr key={m.menuName} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="px-6 py-3 text-sm font-medium text-gray-900">{m.menuName}</td>
+                      <td className="px-6 py-3 text-sm text-gray-600">{m.quantity.toLocaleString()}개</td>
+                      <td className="px-6 py-3 text-sm font-semibold text-gray-900">{m.totalSales.toLocaleString()}원</td>
+                      <td className="px-6 py-3 text-sm text-gray-600">
+                        {totalSales > 0 ? ((m.totalSales / totalSales) * 100).toFixed(1) : '0.0'}%
+                      </td>
                     </tr>
                   ))}
                 </tbody>

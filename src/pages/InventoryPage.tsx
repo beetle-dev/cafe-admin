@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Plus, Search, RotateCcw } from 'lucide-react';
 import { getInventory, adjustInventory, getInventoryLogs } from '../api/inventory';
-import { useAuthStore } from '../store/authStore';
 import type { StoreInventoryResDto, InventoryLogResDto } from '../types';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
@@ -25,7 +24,6 @@ const changeTypeMap = { IN: '입고', OUT: '출고', ADJUST: '조정' };
 const changeTypeBadge = { IN: 'success', OUT: 'danger', ADJUST: 'info' } as const;
 
 export function InventoryPage() {
-  const { selectedStoreId } = useAuthStore();
   const [inventory, setInventory] = useState<StoreInventoryResDto[]>([]);
   const [logs, setLogs] = useState<InventoryLogResDto[]>([]);
   const [page, setPage] = useState(0);
@@ -47,10 +45,9 @@ export function InventoryPage() {
   const { register: logReg, handleSubmit: handleLogSearch, reset: resetLogSearch } = useForm<LogSearchForm>({ defaultValues: logSearch });
 
   const fetchInventory = async (s = invSearch, p = page) => {
-    if (!selectedStoreId) return;
     setLoading(true);
     try {
-      const res = await getInventory(selectedStoreId, {
+      const res = await getInventory({
         page: p, size: 20,
         ...(s.ingredientName && { ingredientName: s.ingredientName }),
         ...(s.isLow !== '' && { low: s.isLow === 'true' }),
@@ -64,8 +61,7 @@ export function InventoryPage() {
   };
 
   const fetchLogs = async (s = logSearch, p = logPage) => {
-    if (!selectedStoreId) return;
-    const res = await getInventoryLogs(selectedStoreId, {
+    const res = await getInventoryLogs({
       page: p, size: 20, sort: 'createdAt', direction: 'DESC',
       ...(s.ingredientName && { ingredientName: s.ingredientName }),
       ...(s.changeType && { changeType: s.changeType }),
@@ -77,8 +73,8 @@ export function InventoryPage() {
     }
   };
 
-  useEffect(() => { fetchInventory(invSearch, page); }, [selectedStoreId, page]);
-  useEffect(() => { if (activeTab === 'logs') fetchLogs(logSearch, logPage); }, [selectedStoreId, logPage, activeTab]);
+  useEffect(() => { fetchInventory(invSearch, page); }, [page]);
+  useEffect(() => { if (activeTab === 'logs') fetchLogs(logSearch, logPage); }, [logPage, activeTab]);
 
   const onInvSearch = (data: InvSearchForm) => { setInvSearch(data); setPage(0); fetchInventory(data, 0); };
   const onInvReset = () => { const e = { ingredientName: '', isLow: '' }; resetInvSearch(e); setInvSearch(e); setPage(0); fetchInventory(e, 0); };
@@ -94,10 +90,9 @@ export function InventoryPage() {
   };
 
   const onSubmit = async (data: AdjustForm) => {
-    if (!selectedStoreId) return;
     setSaving(true);
     try {
-      await adjustInventory(selectedStoreId, {
+      await adjustInventory({
         ingredientId: data.ingredientId,
         quantity: Number(data.quantity),
         changeType: data.changeType,

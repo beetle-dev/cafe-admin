@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Image, Search, Tag, X, Upload } from 'lucide-react';
-import { getMenus, createMenu, updateMenu, getMenuCategories, createMenuCategory } from '../api/menu';
+import { Plus, Image, Search, Tag, X, Upload, GripVertical } from 'lucide-react';
+import { getMenus, createMenu, updateMenu, getMenuCategories, createMenuCategory, updateMenuCategory } from '../api/menu';
 import type { MenuResDto, MenuCategoryResDto } from '../types';
 import { Modal } from '../components/common/Modal';
 import { Badge } from '../components/common/Badge';
@@ -35,6 +35,9 @@ export function MenuPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [deleteImage, setDeleteImage] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingCatId, setEditingCatId] = useState<number | null>(null);
+  const [editingCatName, setEditingCatName] = useState('');
+  const dragCatId = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<MenuForm>();
@@ -54,7 +57,7 @@ export function MenuPage() {
 
   const fetchCategories = async () => {
     const res = await getMenuCategories().catch(() => null);
-    if (res?.data) setCategories(res.data.content);
+    if (res?.data) setCategories([...res.data.content].sort((a, b) => a.sortOrder - b.sortOrder));
   };
 
   useEffect(() => { fetchMenus(); }, [page, catFilter]);
@@ -69,17 +72,21 @@ export function MenuPage() {
   };
   const openEdit = (menu: MenuResDto) => {
     setEditMenu(menu);
-    setValue('name', menu.name);
-    setValue('description', menu.description);
-    setValue('price', menu.price);
-    setValue('cost', menu.cost);
-    setValue('menuCategoryId', menu.menuCategoryId);
-    setValue('isActive', menu.isActive);
     setImageFile(null);
     setImagePreview(menu.imageUrl ?? null);
     setDeleteImage(false);
     setShowCreate(true);
   };
+
+  useEffect(() => {
+    if (!showCreate || !editMenu) return;
+    setValue('name', editMenu.name);
+    setValue('description', editMenu.description);
+    setValue('price', editMenu.price.toLocaleString() as unknown as number);
+    setValue('cost', editMenu.cost ? editMenu.cost.toLocaleString() as unknown as number : 0);
+    setValue('menuCategoryId', editMenu.menuCategoryId);
+    setValue('isActive', editMenu.isActive);
+  }, [showCreate, editMenu]);
 
   const handleImageChange = (file: File | null) => {
     setImageFile(file);
@@ -141,6 +148,63 @@ export function MenuPage() {
   };
 
   const handleSearch = () => { setPage(0); fetchMenus(); };
+
+  const onToggleCategory = async (c: MenuCategoryResDto) => {
+    const nextActive = !c.isActive;
+    setCategories((prev) => prev.map((x) => x.id === c.id ? { ...x, isActive: nextActive } : x));
+    try {
+      await updateMenuCategory(c.id, { name: c.name, sortOrder: c.sortOrder, isActive: nextActive });
+    } catch (e: unknown) {
+      setCategories((prev) => prev.map((x) => x.id === c.id ? { ...x, isActive: c.isActive } : x));
+      const err = e as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message ?? '변경에 실패했습니다.');
+    }
+  };
+
+  const startEditCategory = (c: MenuCategoryResDto) => {
+    setEditingCatId(c.id);
+    setEditingCatName(c.name);
+  };
+
+  const saveEditCategory = async (c: MenuCategoryResDto) => {
+    const name = editingCatName.trim();
+    setEditingCatId(null);
+    if (!name || name === c.name) return;
+    setCategories((prev) => prev.map((x) => x.id === c.id ? { ...x, name } : x));
+    try {
+      await updateMenuCategory(c.id, { name, sortOrder: c.sortOrder, isActive: c.isActive });
+    } catch (e: unknown) {
+      setCategories((prev) => prev.map((x) => x.id === c.id ? { ...x, name: c.name } : x));
+      const err = e as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message ?? '이름 변경에 실패했습니다.');
+    }
+  };
+
+  const handleCatDrop = async (targetId: number) => {
+    const sourceId = dragCatId.current;
+    dragCatId.current = null;
+    if (sourceId == null || sourceId === targetId) return;
+
+    const prevCategories = categories;
+    const reordered = [...categories];
+    const fromIdx = reordered.findIndex((c) => c.id === sourceId);
+    const toIdx = reordered.findIndex((c) => c.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    const resequenced = reordered.map((c, i) => ({ ...c, sortOrder: i + 1 }));
+    setCategories(resequenced);
+
+    try {
+      await Promise.all(resequenced.map((c) =>
+        updateMenuCategory(c.id, { name: c.name, sortOrder: c.sortOrder, isActive: c.isActive })
+      ));
+    } catch (e: unknown) {
+      setCategories(prevCategories);
+      const err = e as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message ?? '순서 변경에 실패했습니다.');
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -255,12 +319,19 @@ export function MenuPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1.5">판매가 (원) *</label>
-              <input type="number" {...register('price', { required: true, valueAsNumber: true })}
+              <input type="text" inputMode="numeric" {...register('price', {
+                required: true,
+                setValueAs: (v) => Number(String(v).replace(/[^0-9]/g, '')) || 0,
+                onChange: (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ','); },
+              })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#3454D0]" />
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1.5">원가 (원)</label>
-              <input type="number" {...register('cost', { valueAsNumber: true })}
+              <input type="text" inputMode="numeric" {...register('cost', {
+                setValueAs: (v) => Number(String(v).replace(/[^0-9]/g, '')) || 0,
+                onChange: (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ','); },
+              })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#3454D0]" />
             </div>
           </div>
@@ -323,9 +394,37 @@ export function MenuPage() {
           </form>
           <div className="space-y-2">
             {categories.map((c) => (
-              <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <span className="text-sm font-medium text-gray-900">{c.name}</span>
-                <Badge variant={c.isActive ? 'success' : 'default'}>{c.isActive ? '활성' : '비활성'}</Badge>
+              <div key={c.id}
+                draggable
+                onDragStart={() => { dragCatId.current = c.id; }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleCatDrop(c.id)}
+                className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-grab active:cursor-grabbing">
+                <GripVertical size={14} className="text-gray-400 shrink-0" />
+                {editingCatId === c.id ? (
+                  <input
+                    autoFocus
+                    value={editingCatName}
+                    onChange={(e) => setEditingCatName(e.target.value)}
+                    onBlur={() => saveEditCategory(c)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingCatId(null); }}
+                    className="flex-1 px-2 py-1 border border-[#3454D0] rounded-lg text-sm outline-none"
+                  />
+                ) : (
+                  <span onClick={() => startEditCategory(c)}
+                    className="flex-1 text-sm font-medium text-gray-900 cursor-text hover:underline">
+                    {c.name}
+                  </span>
+                )}
+                <button type="button" onClick={() => onToggleCategory(c)}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
+                    c.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                  <span className={`w-8 h-[18px] rounded-full relative transition-colors ${c.isActive ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    <span className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all ${c.isActive ? 'left-[17px]' : 'left-0.5'}`} />
+                  </span>
+                  {c.isActive ? '활성' : '비활성'}
+                </button>
               </div>
             ))}
           </div>

@@ -8,7 +8,6 @@ import { Bar, Line, Doughnut } from 'react-chartjs-2';
 import { ShoppingCart, TrendingUp, Package, Bell, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { getOrders } from '../api/order';
 import { getInventory } from '../api/inventory';
-import { useAuthStore } from '../store/authStore';
 import type { OrderResDto, StoreInventoryResDto } from '../types';
 
 function toLocalISOString(date: Date) {
@@ -50,36 +49,34 @@ function KpiCard({
 }
 
 export function DashboardPage() {
-  const { selectedStoreId } = useAuthStore();
   const [monthOrders, setMonthOrders] = useState<OrderResDto[]>([]);
   const [todayOrders, setTodayOrders] = useState<OrderResDto[]>([]);
   const [recentOrders, setRecentOrders] = useState<OrderResDto[]>([]);
   const [inventory, setInventory] = useState<StoreInventoryResDto[]>([]);
 
   useEffect(() => {
-    if (!selectedStoreId) return;
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
-    getOrders(selectedStoreId, {
+    getOrders({
       orderStartDate: toLocalISOString(monthStart),
       orderEndDate: toLocalISOString(now),
       size: 2000, sort: 'createdAt', direction: 'DESC',
     }).then((r) => r.data && setMonthOrders(r.data.content)).catch(() => {});
 
-    getOrders(selectedStoreId, {
+    getOrders({
       orderStartDate: toLocalISOString(todayStart),
       orderEndDate: toLocalISOString(todayEnd),
       size: 1000, sort: 'createdAt', direction: 'DESC',
     }).then((r) => r.data && setTodayOrders(r.data.content)).catch(() => {});
 
-    getOrders(selectedStoreId, { size: 5, sort: 'createdAt', direction: 'DESC' })
+    getOrders({ size: 5, sort: 'createdAt', direction: 'DESC' })
       .then((r) => r.data && setRecentOrders(r.data.content)).catch(() => {});
-    getInventory(selectedStoreId, { size: 100 })
+    getInventory({ size: 100 })
       .then((r) => r.data && setInventory(r.data.content)).catch(() => {});
-  }, [selectedStoreId]);
+  }, []);
 
   const thisMonthOrders = monthOrders.filter((o) => o.status === 'COMPLETED');
   const completedTodayOrders = todayOrders.filter((o) => o.status === 'COMPLETED');
@@ -260,7 +257,7 @@ export function DashboardPage() {
                 <th className="text-left px-6 py-3 font-medium">금액</th>
                 <th className="text-left px-6 py-3 font-medium">결제수단</th>
                 <th className="text-left px-6 py-3 font-medium">상태</th>
-                <th className="text-left px-6 py-3 font-medium">시간</th>
+                <th className="text-left px-6 py-3 font-medium">일시</th>
               </tr>
             </thead>
             <tbody>
