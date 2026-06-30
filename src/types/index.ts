@@ -40,6 +40,12 @@ export interface UserReqDto {
   isActive?: boolean;
 }
 
+export interface UserCreateReqDto {
+  email: string;
+  password: string;
+  name: string;
+}
+
 export interface UsersSearchDto {
   page?: number;
   size?: number;

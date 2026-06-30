@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { createUser } from '../api/auth';
+import { signup } from '../api/auth';
 import { Coffee, Eye, EyeOff } from 'lucide-react';
 
 interface RegisterForm {
@@ -22,7 +22,7 @@ export function RegisterPage() {
     setLoading(true);
     setError('');
     try {
-      await createUser({ email: data.email, password: data.password, name: data.name, role: 'PENDING' });
+      await signup({ email: data.email, password: data.password, name: data.name });
       alert('회원가입이 완료되었습니다. 로그인해주세요.');
       navigate('/login');
     } catch (e: unknown) {

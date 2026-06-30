@@ -1,5 +1,5 @@
 import { authClient } from './client';
-import type { CommonResponse, PageResponse, UserResDto, UserReqDto, UsersSearchDto } from '../types';
+import type { CommonResponse, PageResponse, UserResDto, UserReqDto, UserCreateReqDto, UsersSearchDto } from '../types';
 
 export const login = async (email: string, password: string) => {
   const params = new URLSearchParams();
@@ -28,6 +28,11 @@ export const getUsers = async (params: UsersSearchDto) => {
 
 export const createUser = async (dto: UserReqDto) => {
   const res = await authClient.post<CommonResponse<null>>('/auth/user', dto);
+  return res.data;
+};
+
+export const signup = async (dto: UserCreateReqDto) => {
+  const res = await authClient.post<CommonResponse<null>>('/auth/signup', dto);
   return res.data;
 };
 

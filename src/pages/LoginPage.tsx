@@ -130,15 +130,26 @@ export function LoginPage() {
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
 
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => onSubmit({ email: 'test@test.com', password: 'testtest123!' })}
-                className="w-full py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-60 border-2 border-dashed"
-                style={{ borderColor: '#3454D0', color: '#3454D0', backgroundColor: '#3454D010' }}
-              >
-                {loading ? '로그인 중...' : '👀 면접관용 데모 로그인'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => onSubmit({ email: 'test@test.com', password: 'testtest123!' })}
+                  className="flex-1 py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-60 border-2 border-dashed"
+                  style={{ borderColor: '#3454D0', color: '#3454D0', backgroundColor: '#3454D010' }}
+                >
+                  {loading ? '로그인 중...' : '👀 관리자 데모'}
+                </button>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => onSubmit({ email: 'staff@test.com', password: 'testtest123!' })}
+                  className="flex-1 py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-60 border-2 border-dashed"
+                  style={{ borderColor: '#3454D0', color: '#3454D0', backgroundColor: '#3454D010' }}
+                >
+                  {loading ? '로그인 중...' : '🙋 스태프 데모'}
+                </button>
+              </div>
 
               <p className="text-center text-sm text-gray-500">
                 계정이 없으신가요?{' '}
