@@ -16,7 +16,8 @@
       "Bash(cd \"D:\\\\01 2026 이직준비\\\\01 프로젝트\" && ls -la)",
       "Read(//d/01 2026 이직준비/01 프로젝트/**)",
       "Bash(find . -type f -name \"*Alarm*.java\")",
-      "Bash(find \"D:\\\\01 2026 이직준비\\\\notification-service\" -type f -name \"EmailService.java\" 2>/dev/null)"
+      "Bash(find \"D:\\\\01 2026 이직준비\\\\notification-service\" -type f -name \"EmailService.java\" 2>/dev/null)",
+      "Bash(git -C \"D:\\\\01 2026 이직준비\\\\01 프로젝트\\\\cafe-admin\" log --oneline -10)"
     ]
   }
 }

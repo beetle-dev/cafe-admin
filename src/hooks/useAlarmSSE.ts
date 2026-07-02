@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useToastStore, type ToastType } from '../store/toastStore';
 import { useAlarmStore } from '../store/alarmStore';
 
-// 항상 Vite 프록시(/noti-api)를 통해 API Gateway로 라우팅
-const SSE_URL = '/noti-api/alarms/subscribe';
+const SSE_URL = `${import.meta.env.VITE_NOTI_URL}/alarms/subscribe`;
 
 const ALARM_TYPE_MAP: Record<string, { type: ToastType; title: string }> = {
   ORDER_CREATED:            { type: 'info',    title: '새 주문' },
