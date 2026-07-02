@@ -120,7 +120,7 @@ export function InventoryPage() {
 
       <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 text-blue-700 text-sm">
         <Info size={15} className="shrink-0" />
-        재고가 최소 수량 미만이 되면 알림이 전송됩니다.
+        재고가 최소 수량 미만이 되면 알림 및 이메일이 전송됩니다.
       </div>
 
       {/* Low stock alert */}
