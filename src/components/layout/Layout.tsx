@@ -1,6 +1,8 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { ToastContainer } from '../ui/ToastContainer';
+import { useAlarmSSE } from '../../hooks/useAlarmSSE';
 
 const titleMap: Record<string, string> = {
   '/': '대시보드',
@@ -16,6 +18,8 @@ export function Layout() {
   const { pathname } = useLocation();
   const title = titleMap[pathname] ?? '카페 관리';
 
+  useAlarmSSE();
+
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: '#F0F2FA' }}>
       <Sidebar />
@@ -25,6 +29,7 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+      <ToastContainer />
     </div>
   );
 }

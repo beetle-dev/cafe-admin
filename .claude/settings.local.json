@@ -12,7 +12,11 @@
       "Bash(npx tsc *)",
       "Bash(Get-ChildItem -Path \"E:\\\\08 2026 이직준비\\\\01 Project\\\\02 카페운영관리시스템\\\\cafe-admin\" -Recurse -Name)",
       "Bash(Select-String -Pattern \"\\(MenuPage|menu\\\\.ts|index\\\\.ts\\)\")",
-      "Bash(gh secret *)"
+      "Bash(gh secret *)",
+      "Bash(cd \"D:\\\\01 2026 이직준비\\\\01 프로젝트\" && ls -la)",
+      "Read(//d/01 2026 이직준비/01 프로젝트/**)",
+      "Bash(find . -type f -name \"*Alarm*.java\")",
+      "Bash(find \"D:\\\\01 2026 이직준비\\\\notification-service\" -type f -name \"EmailService.java\" 2>/dev/null)"
     ]
   }
 }
