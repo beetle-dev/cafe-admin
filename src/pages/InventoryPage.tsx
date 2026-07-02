@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Plus, Search, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Plus, Search, RotateCcw, Info } from 'lucide-react';
 import { getInventory, adjustInventory, getInventoryLogs } from '../api/inventory';
 import type { StoreInventoryResDto, InventoryLogResDto } from '../types';
 import { Badge } from '../components/common/Badge';
@@ -116,6 +116,11 @@ export function InventoryPage() {
           <h2 className="text-xl font-bold text-gray-900">재고 관리</h2>
           <p className="text-sm text-gray-500 mt-0.5">재고 현황 및 입출고 관리</p>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 text-blue-700 text-sm">
+        <Info size={15} className="shrink-0" />
+        재고가 최소 수량 미만이 되면 알림이 전송됩니다.
       </div>
 
       {/* Low stock alert */}

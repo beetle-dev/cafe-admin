@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, X, ChevronRight } from 'lucide-react';
+import { Plus, Search, X, ChevronRight, Info } from 'lucide-react';
 import { getOrders, createOrder, cancelOrder } from '../api/order';
 import { getMenus } from '../api/menu';
 import type { OrderResDto, MenuResDto, OrderItemReqDto } from '../types';
@@ -122,6 +122,11 @@ export function OrdersPage() {
           style={{ backgroundColor: '#3454D0' }}>
           <Plus size={16} /> 새 주문
         </button>
+      </div>
+
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 text-blue-700 text-sm">
+        <Info size={15} className="shrink-0" />
+        새 주문이 발생하면 알림이 전송됩니다.
       </div>
 
       <div className="flex items-center gap-2 bg-white rounded-xl p-2 shadow-sm w-fit">
